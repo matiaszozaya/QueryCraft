@@ -1,0 +1,157 @@
+﻿@using QueryCraft.Components
+@using QueryCraft.Entities
+@using QueryCraft.Services
+@using System.Collections.ObjectModel
+@inject IDatasetService DatasetService
+@inject ITransformationService TService
+@inject IUtilities Utilities
+@inject IJSRuntime JSRuntime
+@page "/add"
+
+<div class="row">
+    <div class="col">
+        <h4 class="fw-bold">Add Transformation</h4>
+
+        <div class="border rounded bg-light p-4" id="t-@_transformation.Id">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="form-outline bg-white me-4" data-mdb-input-init>
+                    <input class="form-control" id="transformation-@_transformation.Id-name" type="text" @bind="_transformation.Name">
+                    <label class="form-label" for="transformation-@_transformation.Id-name">Transformation Name</label>
+                </div>
+
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-floppy2-fill text-primary me-2" style="cursor: pointer; font-size: 1.5rem;" @onclick="() => UpdateTransformation(_transformation.Id)"></i>
+                    <i class="bi bi-trash-fill text-danger" style="cursor: pointer; font-size: 1.5rem;" @onclick="() => RemoveTransformation(_transformation.Id)"></i>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <select class="form-select" @bind="_transformation.SelectedDatasetId" @bind:event="oninput" @onchange='() => TService.LoadFields(_transformation.Id)'>
+                    <option value="" selected disabled>Select an Origin DataSet</option>
+                    @foreach (var d in _transformation.Datasets)
+                    {
+                        <option value="@d.Id">@d.Name</option>
+                    }
+                </select>
+            </div>
+
+            <h6 class="fw-bold text-muted">Add Operations</h6>
+            <div class="btn-group mb-4" role="group" aria-label="Basic example">
+                <button type="button" class="btn btn-sm btn-primary" @onclick="() => TService.AddSelect(_transformation.Id)">Select</button>
+                <button type="button" class="btn btn-sm btn-primary" @onclick="() => TService.AddJoin(_transformation.Id)">Join</button>
+                <button type="button" class="btn btn-sm btn-primary" @onclick="() => TService.AddSort(_transformation.Id)">Sort</button>
+                <button type="button" class="btn btn-sm btn-primary" @onclick="() => TService.AddFilter(_transformation.Id)">Filter</button>
+                <button type="button" class="btn btn-sm btn-primary" @onclick="() => TService.AddDerivedColumn(_transformation.Id)">DerivedColumn</button>
+                <button type="button" class="btn btn-sm btn-danger" @onclick="() => TService.RemoveAllOperations(_transformation.Id)">Remove All Operations</button>
+            </div>
+
+            <div class="accordion mb-4" id="data-mapping">
+                @if (_transformation.Operations != null)
+                {
+                    @foreach (var o in _transformation.Operations)
+                    {
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading-@o.Id">
+                                <button data-mdb-collapse-init
+                                class="accordion-button"
+                                type="button"
+                                data-mdb-target="#collapse-@o.Id"
+                                aria-expanded="true"
+                                aria-controls="collapse-@o.Id">
+                                    <span class="badge text-bg-primary p-2 me-2">[@o.Order] @o.Name operation</span>
+                                    @if (!o.IsValid)
+                                    {
+                                        <span class="badge text-bg-danger p-2">This operation may cause conflicts!</span>
+                                    }
+                                </button>
+                            </h2>
+                            <div id="collapse-@o.Id" class="accordion-collapse collapse show" aria-labelledby="heading-@o.Id" data-mdb-parent="#data-mapping">
+                                <div class="accordion-body">
+                                    @switch (o.Name)
+                                    {
+                                        case ("SELECT"):
+                                            <SelectComponent Operation="(SelectOperation)_transformation.Operations.First(x => x.Id == o.Id)" />
+                                            break;
+                                        case ("JOIN"):
+                                            <JoinComponent Operation="(JoinOperation)_transformation.Operations.First(x => x.Id == o.Id)" />
+                                            break;
+                                        case ("SORT"):
+                                            <SortComponent Operation="(SortOperation)_transformation.Operations.First(x => x.Id == o.Id)" />
+                                            break;
+                                        case ("FILTER"):
+                                            <FilterComponent Operation="(FilterOperation)_transformation.Operations.First(x => x.Id == o.Id)" />
+                                            break;
+                                        case ("DERIVEDCOLUMN"):
+                                            <DerivedColumnComponent Operation="(DerivedColumnOperation)_transformation.Operations.First(x => x.Id == o.Id)" />
+                                            break;
+                                        default:
+                                            <div class="alert alert-warning m-0" role="alert">
+                                                No operation info to show!
+                                            </div>
+                                            break;
+                                    }
+                                    <button class="w-100 btn btn-sm btn-danger mt-2" @onclick="() => TService.DeleteOperation(_transformation.Id, o.Id)">Delete this @o.Name</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <p class="small bg-dark text-light rounded mb-2 p-4" style="font-family: monospace;">
+                @if (_transformation.Operations != null)
+                {
+                    @foreach (var o in _transformation.Operations)
+                    {
+                        if (!string.IsNullOrEmpty(o.Query))
+                        {
+                            <span>@o.Query</span>
+
+                            <br />
+                        }
+                    }
+                }
+            </p>
+            <button type="button" class="w-100 btn btn-success" @onclick="() => StateHasChanged()"><i class="bi bi-arrow-repeat"></i> Preview Complete Query</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private Transformation _transformation = new();
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _transformation.Datasets = DatasetService.LoadDatasets();
+            AddTransformation();
+            StateHasChanged();
+            await JSRuntime.InvokeVoidAsync("initializeMdbInputs");
+            await JSRuntime.InvokeVoidAsync("initializeMdbSelects");
+            await JSRuntime.InvokeVoidAsync("initializeMdbCollapses");
+        }
+    }
+
+    private void AddTransformation()
+    {
+        TService.AddTransformation(_transformation);
+        JSRuntime.InvokeVoidAsync("showMdbToast", "success", "Add", "Transformation Added.");
+        StateHasChanged();
+    }
+
+    private void UpdateTransformation(int id)
+    {
+        TService.UpdateTransformation(_transformation);
+        JSRuntime.InvokeVoidAsync("showMdbToast", "info", "Update", "Transformation Updated.");
+        StateHasChanged();
+    }
+
+    private void RemoveTransformation(int id)
+    {
+        TService.RemoveTransformation(_transformation);
+        _transformation = new();
+        JSRuntime.InvokeVoidAsync("showMdbToast", "danger", "Delete", "Transformation Deleted.");
+        StateHasChanged();
+    }
+}

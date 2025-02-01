@@ -1,0 +1,51 @@
+﻿@using QueryCraft.Entities
+
+<div class="row g-2">
+    <div class="col">
+        <select class="form-select" @bind="_sourceFieldName" @onclick="() => StateHasChanged()">
+            <option value="" disabled>Source Field</option>
+            @foreach (var f in Operation.SourceFields)
+            {
+                <option value="@f.Name">@f.Name (@f.DataType)</option>
+            }
+        </select>
+    </div>
+    <div class="col-2">
+        <select class="form-select" @bind="_expression">
+            <option value="" disabled>Operator</option>
+            @foreach (var e in Operation.Expressions)
+            {
+                <option value="@e">@e</option>
+            }
+        </select>
+    </div>
+    <div class="col">
+        <input type="text" class="form-control" placeholder="Target Value" @bind="_targetField">
+    </div>
+
+    @if (!string.IsNullOrEmpty(_sourceFieldName) && !string.IsNullOrEmpty(_expression) && !string.IsNullOrEmpty(_targetField))
+    {
+        <div class="col-12">
+            <p class="small bg-dark text-light rounded my-2 p-4" style="font-family: monospace;">
+                @Operation.Query
+            </p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public FilterOperation Operation { get; set; }
+
+    private string? _sourceFieldName = "";
+    private string? _expression = "";
+    private string? _targetField = "";
+    private List<string>? _expressions = new();
+
+    protected override bool ShouldRender()
+    {
+        Operation.UpdateExpressions(_sourceFieldName);
+        Operation.UpdateQuery(_sourceFieldName, _expression, _targetField);
+        return base.ShouldRender();
+    }
+}

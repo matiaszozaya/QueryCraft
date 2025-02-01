@@ -1,0 +1,39 @@
+﻿@using QueryCraft.Entities
+
+<div class="row g-2">
+    <div class="col-8">
+        <select class="form-select" @bind="_fieldName">
+            <option value="" disabled>Field Name</option>
+            @foreach (var f in Operation.SourceFields)
+            {
+                <option value="@f.Name">@f.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col">
+        <select class="form-select" @bind="_direction">
+            <option value="ASC">Ascending</option>
+            <option value="DESC">Descending</option>
+        </select>
+    </div>
+    <div class="col">
+        <button class="w-100 btn btn-primary" @onclick="() => Operation.AddSortDirective(_fieldName, _direction)">Add</button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Operation.Query))
+    {
+        <div class="col-12">
+            <p class="small bg-dark text-light rounded my-2 p-4" style="font-family: monospace;">
+                @Operation.Query
+            </p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public SortOperation Operation { get; set; }
+
+    private string? _fieldName = "";
+    private string? _direction = "";
+}

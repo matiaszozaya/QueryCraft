@@ -1,0 +1,56 @@
+﻿@using QueryCraft.Entities
+@using QueryCraft.Services
+@inject IUtilities Utilities
+
+@if (Operation.SourceFields.Any())
+{
+    <div class="d-flex mb-2">
+        <button class="btn btn-primary me-2" @onclick="() => { Operation.BulkUpdateCheckboxes(true); StateHasChanged(); }">Select All</button>
+        <button class="btn btn-secondary" @onclick="() => { Operation.BulkUpdateCheckboxes(false); StateHasChanged(); }">Unselect All</button>
+    </div>
+
+    <form>
+        @foreach (var f in Operation.SourceFields)
+        {
+            <div class="d-flex align-items-center mb-2">
+                <div class="form-check">
+                    <input id="check-@f.Id" class="form-check-input" type="checkbox" @bind="f.IsChecked" @oninput="(e) => { Operation.UpdateCheckbox(e, f.Id); StateHasChanged(); }">
+                </div>
+
+                <div class="w-50 me-2">
+                    <input type="text" value="@f.Name" class="form-control form-control-sm bg-light" id="@f.Id" aria-describedby="@f.Id" readonly>
+                </div>
+
+                <div class="w-50">
+                    <input type="text" class="form-control form-control-sm" id="map-@f.Id" placeholder="Rename as..." @bind="f.Rename" @oninput="StateHasChanged">
+                </div>
+            </div>
+        }
+    </form>
+
+    @if (!string.IsNullOrEmpty(_queryPreview))
+    {
+        <p class="w-100 small bg-dark text-light rounded mt-4 p-4" style="font-family: monospace;">
+            @_queryPreview
+        </p>
+    }
+}
+else
+{
+    <div class="alert alert-warning m-0" role="alert">
+        No fields to show! Select a Dataset!
+    </div>
+}
+
+@code {
+    [Parameter]
+    public SelectOperation Operation { get; set; }
+
+    private string _queryPreview = "";
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        _queryPreview = Operation.UpdateSelectQuery(Operation.SourceFields, Operation.SourceDatasetName);
+        base.OnAfterRender(firstRender);
+    }
+}

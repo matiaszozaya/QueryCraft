@@ -1,0 +1,83 @@
+﻿@using QueryCraft.Entities
+@using QueryCraft.Services
+@inject IJSRuntime JSRuntime
+@inject ITransformationService TService
+@page "/"
+
+<div class="card">
+    <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h4 class="fw-bold m-0">📂​ Queries</h4>
+            <div class="d-flex align-items-center">
+                <a href="/add" class="btn btn-primary me-2">Create New Query</a>
+                <button type="button" class="btn btn-danger" @onclick="() => RemoveAll()">Remove All</button>
+            </div>
+        </div>
+
+        <TelerikGrid Data="@_transformations"
+                     Pageable="true"
+                     Sortable="true"
+                     FilterMode="@GridFilterMode.FilterMenu">
+            <GridColumns>
+                <GridColumn Field="Name" Title="Name" />
+                <GridColumn Field="Operations" Title="Query">
+                    <Template>
+                        @{
+                            var item = (Transformation)context;
+                            <code>
+                                @foreach (var o in item.Operations)
+                                {
+                                    <p>@o.Query</p>
+                                }
+                            </code>
+                        }
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="Actions" Title="Actions">
+                    <Template>
+                        @{
+                            var item = (Transformation)context;
+                            <div class="d-flex align-items-center">
+                                <a href="/edit/@item.Id" class="text-light btn btn-sm btn-primary d-inline me-2">Edit Operation</a>
+                                <a class="text-light btn btn-sm btn-danger d-inline" @onclick="() => RemoveTransformation(item.Id)">Delete Operation</a>
+                            </div>
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<Transformation> _transformations = [];
+
+    protected override Task OnInitializedAsync()
+    {
+        _transformations = TService.GetWithIncludes();
+        return base.OnInitializedAsync();
+    }
+
+    private void RemoveTransformation(int id)
+    {
+        TService.RemoveTransformation(_transformations.FirstOrDefault(t => t.Id == id));
+        _transformations = TService.GetAll();
+        JSRuntime.InvokeVoidAsync("showMdbToast", "danger", "Delete", "Transformation Deleted.");
+        StateHasChanged();
+    }
+
+    private void RemoveAll()
+    {
+        if (_transformations.Any())
+        {
+            TService.RemoveAll(_transformations);
+            _transformations = TService.GetWithIncludes();
+            JSRuntime.InvokeVoidAsync("showMdbToast", "danger", "Delete", "All Transformations Deleted.");
+            StateHasChanged();
+        }
+        else
+        {
+            JSRuntime.InvokeVoidAsync("showMdbToast", "warning", "Warning", "No Transformations to delete.");
+        }
+    }
+}

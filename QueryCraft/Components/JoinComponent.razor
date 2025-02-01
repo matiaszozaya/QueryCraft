@@ -1,0 +1,107 @@
+﻿@using QueryCraft.Entities
+
+<div class="row g-2">
+    <div class="col-12">
+        <select class="form-select" @bind="_targetDatasetGuid" @bind:event="oninput" @onchange="() => LoadTargetFields()">
+            <option value="" disabled>Target DataSet</option>
+            @foreach (var d in Operation.AvailableDatasets)
+            {
+                <option value="@d.Id">@d.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-6">
+        <select class="form-select" @bind="_sourceFieldId">
+            <option value="" disabled>Source Field</option>
+            @foreach (var f in Operation.SourceFields)
+            {
+                <option value="@f.Id">@f.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-6">
+        <select class="form-select" @bind="_targetFieldId">
+            <option value="" disabled>Target Field</option>
+            @foreach (var f in _targetFields)
+            {
+                <option value="@f.Id">@f.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="col-6">
+        <select class="form-select" @bind="_joinType">
+            <option value="" disabled>Join Type</option>
+            <option value="INNER JOIN">Inner Join</option>
+            <option value="LEFT JOIN">Left Join</option>
+            <option value="RIGHT JOIN">Right Join</option>
+            <option value="FULL OUTER JOIN">Full Outer Join</option>
+        </select>
+    </div>
+
+    <div class="col-6">
+        <select class="form-select" @bind="_joinCondition">
+            <option value="" disabled>Condition</option>
+            <option value="==">Equal</option>
+            <option value="!=">Not Equal</option>
+            <option value="<">Lower Than</option>
+            <option value=">">Greater Than</option>
+            <option value="<=">Lower Than Or Equal</option>
+            <option value=">=">Greater Than Or Equal</option>
+            <option value="===">Null Inclusive Equal</option>
+            <option value="<=>">Case Insensitive Equal</option>
+        </select>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_queryPreview))
+    {
+        <div class="col-12">
+            <p class="small bg-dark text-light rounded my-2 p-4" style="font-family: monospace;">
+                @_queryPreview
+            </p>
+        </div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(_targetDatasetGuid) && !string.IsNullOrEmpty(_sourceFieldId) && !string.IsNullOrEmpty(_targetFieldId) && !string.IsNullOrEmpty(_joinType) && !string.IsNullOrEmpty(_joinCondition))
+{
+    <button class="w-100 btn btn-sm btn-primary mt-2" @onclick="() => { PreviewJoin(); Operation.LoadResultFields(_targetFields, TargetDataset.Name); }">Preview Query</button>
+}
+
+@code {
+    [Parameter]
+    public JoinOperation Operation { get; set; }
+
+    private Dataset TargetDataset = new();
+    private IEnumerable<Field>? _targetFields = [];
+    private string? _targetDatasetGuid = "";
+    private string? _sourceFieldId = "";
+    private string? _targetFieldId = "";
+    private string? _joinType = "";
+    private string? _joinCondition = "";
+    private string? _queryPreview = "";
+
+    private void LoadTargetFields()
+    {
+        if (!string.IsNullOrEmpty(_targetDatasetGuid))
+        {
+            TargetDataset = Operation.AvailableDatasets.FirstOrDefault(d => d.Id.ToString() == _targetDatasetGuid);
+            _targetFields = TargetDataset.Fields;
+        }
+    }
+
+    private void PreviewJoin()
+    {
+        string sourceDatasetName = Operation.SourceDataset.Name;
+        string targetDatasetName = TargetDataset.Name;
+        var sourceFieldName = Operation.SourceFields?.FirstOrDefault(f => f.Id.ToString() == _sourceFieldId).Name;
+        var targetFieldName = _targetFields?.FirstOrDefault(f => f.Id.ToString() == _targetFieldId).Name;
+
+        Operation.UpdateQuery(sourceDatasetName, targetDatasetName, sourceFieldName, targetFieldName, _joinType, _joinCondition);
+        _queryPreview = Operation.Query;
+
+        StateHasChanged();
+    }
+}
